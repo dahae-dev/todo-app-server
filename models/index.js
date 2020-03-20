@@ -14,6 +14,10 @@ sequelize
     console.error("Unable to connect to the database:", err);
   });
 
+db.Task = require("./task")(sequelize, Sequelize);
+
+db.Task.hasMany(db.Task, { as: "subtask", foreignKey: "parent_id", sourceKey: "id" });
+
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
 
