@@ -1,5 +1,6 @@
 const VError = require("verror");
 const moment = require("moment");
+const { Op } = require("sequelize");
 const db = require("../models");
 
 module.exports = {
@@ -29,10 +30,10 @@ module.exports = {
   },
   counts: async function () {
     try {
-      const all = await db.Task.count(await this.current("all"));
-      const today = await db.Task.count(await this.current("today"));
-      const complete = await db.Task.count(await this.current("complete"));
-      const incomplete = await db.Task.count(await this.current("incomplete"));
+      const all = await db.Task.count(await this.current("filter", "all"));
+      const today = await db.Task.count(await this.current("filter", "today"));
+      const complete = await db.Task.count(await this.current("filter", "complete"));
+      const incomplete = await db.Task.count(await this.current("filter", "incomplete"));
       return {
         all,
         today,
@@ -45,33 +46,58 @@ module.exports = {
       throw error;
     }
   },
-  current: function (queryString = "") {
+  current: async function (page = "all", queryString = "") {
     let whereClause = {};
-    switch (queryString) {
-      case "today":
+    switch (page) {
+      case "search":
         whereClause = {
           where: {
-            due_date: moment().startOf("day").format("YYYY-MM-DD"),
+            title: {
+              [Op.like]: `%${queryString}%`,
+            }
           }
         };
         break;
-      case "complete":
-        whereClause = {
-          where: {
-            is_completed: true,
-          }
-        };
-        break;
-      case "incomplete":
-        whereClause = {
-          where: {
-            is_completed: false,
-          }
-        };
+      case "filter":
+        switch (queryString) {
+          case "today":
+            whereClause = {
+              where: {
+                due_date: moment().startOf("day").format("YYYY-MM-DD"),
+              }
+            };
+            break;
+          case "complete":
+            whereClause = {
+              where: {
+                is_completed: true,
+              }
+            };
+            break;
+          case "incomplete":
+            whereClause = {
+              where: {
+                is_completed: false,
+              }
+            };
+            break;
+          default:
+            whereClause = {};
+        }
         break;
       default:
         whereClause = {};
     }
     return whereClause;
-  }
+  },
+  pagination: async function (pageNum, extraClause) {
+    const limit = 5;
+    const offset = pageNum * limit - limit;
+    const tasks = await this.all({
+      limit,
+      offset,
+      ...extraClause,
+    })
+    return tasks;
+  },
 }

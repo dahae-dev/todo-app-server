@@ -1,5 +1,4 @@
 const VError = require("verror");
-const { Op } = require("sequelize");
 const db = require("../models");
 const query = require("./query");
 
@@ -18,18 +17,32 @@ module.exports = {
       throw error;
     }
   },
-  getSearchTasks: async (req, res) => {
+  getTasksPerPage: async (req, res) => {
     try {
-      const { queryString } = req.params;
-      const tasks = await query.all({
-        where: {
-          title: {
-            [Op.like]: `%${queryString}%`,
-          }
-        }
-      });
+      const { pageNum } = req.params;
+      const tasks = await query.pagination(pageNum);
+      const totalCounts = await query.counts();
+      const count = await db.Task.count();
       res.json({
         tasks,
+        totalCounts,
+        count,
+      });
+    } catch (err) {
+      const error = new VError("Failed to get tasks per page.");
+      error.originalError = err;
+      throw error;
+    }
+  },
+  getSearchTasks: async (req, res) => {
+    try {
+      const { queryString, pageNum } = req.params;
+      const whereClause = await query.current("search", queryString);
+      const tasks = await query.pagination(pageNum, whereClause);
+      const count = await db.Task.count(whereClause);
+      res.json({
+        tasks,
+        count,
       });
     } catch (err) {
       const error = new VError("Failed to search tasks.");
@@ -39,11 +52,13 @@ module.exports = {
   },
   getFilteredTasks: async (req, res) => {
     try {
-      const { queryString } = req.params;
-      const whereClause = await query.current(queryString);
-      const tasks = await query.all(whereClause);
+      const { queryString, pageNum } = req.params;
+      const whereClause = await query.current("filter", queryString);
+      const tasks = await query.pagination(pageNum, whereClause);
+      const count = await db.Task.count(whereClause);
       res.json({
         tasks,
+        count,
       });
     } catch (err) {
       const error = new VError("Failed to filter tasks.");
@@ -57,7 +72,9 @@ module.exports = {
       await db.Task.create({
         title,
       });
-      const tasks = await query.all();
+      const tasks = await query.all({
+        limit: 5,
+      })
       const totalCounts = await query.counts();
       res.json({
         tasks,
@@ -71,16 +88,18 @@ module.exports = {
   },
   addSubtask: async (req, res) => {
     try {
-      const { title, parent_id } = req.body;
+      const { title, parent_id, pageNum } = req.body;
       await db.Task.create({
         title,
         parent_id,
       });
-      const tasks = await query.all();
+      const tasks = await query.pagination(pageNum);
       const totalCounts = await query.counts();
+      const count = await db.Task.count();
       res.json({
         tasks,
         totalCounts,
+        count,
       });
     } catch (err) {
       const error = new VError("Failed to add a subtask.");
@@ -106,16 +125,19 @@ module.exports = {
   },
   updateComplete: async (req, res) => {
     try {
-      const { id, is_completed } = req.body;
+      const { id, is_completed, pageNum, page, queryString } = req.body;
       const task = await db.Task.findByPk(id);
       await task.update({
         is_completed,
       })
-      const tasks = await query.all();
+      const whereClause = await query.current(page, queryString);
+      const tasks = await query.pagination(pageNum, whereClause);
       const totalCounts = await query.counts();
+      const count = await db.Task.count(whereClause);
       res.json({
         tasks,
         totalCounts,
+        count,
       });
     } catch (err) {
       const error = new VError("Failed to update the task complete.");
@@ -125,16 +147,19 @@ module.exports = {
   },
   updateDuedate: async (req, res) => {
     try {
-      const { id, due_date } = req.body;
+      const { id, due_date, pageNum, page, queryString } = req.body;
       const task = await db.Task.findByPk(id);
       await task.update({
         due_date,
       })
-      const tasks = await query.all();
+      const whereClause = await query.current(page, queryString);
+      const tasks = await query.pagination(pageNum, whereClause);
       const totalCounts = await query.counts();
+      const count = await db.Task.count(whereClause);
       res.json({
         tasks,
         totalCounts,
+        count,
       });
     } catch (err) {
       const error = new VError("Failed to save the due date.");
@@ -145,13 +170,18 @@ module.exports = {
   deleteTask: async (req, res) => {
     try {
       const { id } = req.params;
+      const { pageNum, page, queryString } = req.body;
       const task = await db.Task.findByPk(id);
       await task.destroy();
-      const tasks = await query.all();
+      const whereClause = await query.current(page, queryString);
+      const tasks = await query.pagination(pageNum);
       const totalCounts = await query.counts();
+      const count = await db.Task.count(whereClause);
+      console.log(count)
       res.json({
         tasks,
         totalCounts,
+        count,
       });
     } catch (err) {
       const error = new VError("Failed to delete the task.");
