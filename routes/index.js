@@ -3,6 +3,7 @@ const router = express.Router();
 
 const taskController = require("../controllers/tasks");
 
+router.get("/filter/:queryString", taskController.getFilteredTasks);
 router.get("/", taskController.getAllTasks);
 router.post("/sub", taskController.addSubtask);
 router.post("/", taskController.addNewTask);

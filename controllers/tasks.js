@@ -6,13 +6,27 @@ module.exports = {
   getAllTasks: async (req, res) => {
     try {
       const tasks = await query.all();
+      const totalCounts = await query.counts();
       res.json({
         tasks,
+        totalCounts,
       });
     } catch (err) {
       const error = new VError("Failed to get all tasks.");
       error.originalError = err;
       throw error;
+    }
+  },
+  getFilteredTasks: async (req, res) => {
+    try {
+      const { queryString } = req.params;
+      const whereClause = await query.current(queryString);
+      const tasks = await query.all(whereClause);
+      res.json({
+        tasks,
+      });
+    } catch (err) {
+      console.log(err);
     }
   },
   addNewTask: async (req, res) => {
@@ -22,8 +36,10 @@ module.exports = {
         title,
       });
       const tasks = await query.all();
+      const totalCounts = await query.counts();
       res.json({
         tasks,
+        totalCounts,
       });
     } catch (err) {
       const error = new VError("Failed to add a new task.");
@@ -39,8 +55,10 @@ module.exports = {
         parent_id,
       });
       const tasks = await query.all();
+      const totalCounts = await query.counts();
       res.json({
         tasks,
+        totalCounts,
       });
     } catch (err) {
       const error = new VError("Failed to add a subtask.");
@@ -72,8 +90,10 @@ module.exports = {
         is_completed,
       })
       const tasks = await query.all();
+      const totalCounts = await query.counts();
       res.json({
         tasks,
+        totalCounts,
       });
     } catch (err) {
       const error = new VError("Failed to update the task complete.");
@@ -89,8 +109,10 @@ module.exports = {
         due_date,
       })
       const tasks = await query.all();
+      const totalCounts = await query.counts();
       res.json({
         tasks,
+        totalCounts,
       });
     } catch (err) {
       const error = new VError("Failed to save the due date.");
@@ -104,8 +126,10 @@ module.exports = {
       const task = await db.Task.findByPk(id);
       await task.destroy();
       const tasks = await query.all();
+      const totalCounts = await query.counts();
       res.json({
         tasks,
+        totalCounts,
       });
     } catch (err) {
       const error = new VError("Failed to delete the task.");
