@@ -31,6 +31,23 @@ module.exports = {
       throw error;
     }
   },
+  addSubtask: async (req, res) => {
+    try {
+      const { title, parent_id } = req.body;
+      await db.Task.create({
+        title,
+        parent_id,
+      });
+      const tasks = await query.all();
+      res.json({
+        tasks,
+      });
+    } catch (err) {
+      const error = new VError("Failed to add a subtask.");
+      error.originalError = err;
+      throw error;
+    }
+  },
   updateTask: async (req, res) => {
     try {
       const { id, title } = req.body;
