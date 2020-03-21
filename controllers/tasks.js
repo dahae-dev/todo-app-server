@@ -1,4 +1,5 @@
 const VError = require("verror");
+const { Op } = require("sequelize");
 const db = require("../models");
 const query = require("./query");
 
@@ -17,6 +18,25 @@ module.exports = {
       throw error;
     }
   },
+  getSearchTasks: async (req, res) => {
+    try {
+      const { queryString } = req.params;
+      const tasks = await query.all({
+        where: {
+          title: {
+            [Op.like]: `%${queryString}%`,
+          }
+        }
+      });
+      res.json({
+        tasks,
+      });
+    } catch (err) {
+      const error = new VError("Failed to search tasks.");
+      error.originalError = err;
+      throw error;
+    }
+  },
   getFilteredTasks: async (req, res) => {
     try {
       const { queryString } = req.params;
@@ -26,7 +46,9 @@ module.exports = {
         tasks,
       });
     } catch (err) {
-      console.log(err);
+      const error = new VError("Failed to filter tasks.");
+      error.originalError = err;
+      throw error;
     }
   },
   addNewTask: async (req, res) => {
