@@ -93,6 +93,12 @@ module.exports = {
         title,
         parent_id,
       });
+      const parentTask = await db.Task.findByPk(parent_id);
+      if (parentTask.is_completed) {
+        await parentTask.update({
+          is_completed: false,
+        })
+      }
       const tasks = await query.pagination(pageNum);
       const totalCounts = await query.counts();
       const count = await db.Task.count();
@@ -170,15 +176,20 @@ module.exports = {
   deleteTask: async (req, res) => {
     try {
       const { id } = req.params;
-      const { pageNum, page, queryString } = req.body;
+      const { page, queryString } = req.body;
+      let { pageNum } = req.body;
       const task = await db.Task.findByPk(id);
       await task.destroy();
       const whereClause = await query.current(page, queryString);
-      const tasks = await query.pagination(pageNum);
+      let tasks = await query.pagination(pageNum);
+      if (!tasks.length) {
+        pageNum = pageNum - 1;
+        tasks = await query.pagination(pageNum - 1);
+      }
       const totalCounts = await query.counts();
       const count = await db.Task.count(whereClause);
-      console.log(count)
       res.json({
+        pageNum,
         tasks,
         totalCounts,
         count,
