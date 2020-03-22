@@ -1,4 +1,5 @@
 const VError = require("verror");
+const readXlsxFile = require("read-excel-file/node");
 const db = require("../models");
 const query = require("./query");
 
@@ -196,6 +197,54 @@ module.exports = {
       });
     } catch (err) {
       const error = new VError("Failed to delete the task.");
+      error.originalError = err;
+      throw error;
+    }
+  },
+  importFromExcel: async (req, res) => {
+    try {
+      const pathToFile = req.files.file.path;
+      const schema = {
+        "Title": {
+          prop: "title",
+          type: String,
+          required: true,
+        },
+        "Complete": {
+          prop: "is_completed",
+          type: Boolean,
+        },
+        "Due Date": {
+          prop: "due_date",
+          type: String,
+        },
+        "Created Date": {
+          prop: "created_date",
+          type: String,
+        },
+        "Updated Date": {
+          prop: "updated_date",
+          type: String,
+        },
+      }
+      const { rows } = await readXlsxFile(pathToFile, { schema });
+      const data = rows.map((row) => {
+        const dateRegex = /([12]\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]))/;
+        row.due_date = !dateRegex.test(row.due_date) ? null : row.due_date;
+        row.title = !row.title ? "No title..." : row.title;
+        return row;
+      })
+      await db.Task.bulkCreate(data);
+      const tasks = await query.pagination(1);
+      const totalCounts = await query.counts();
+      const count = await db.Task.count();
+      res.json({
+        tasks,
+        totalCounts,
+        count,
+      });
+    } catch (err) {
+      const error = new VError("Failed to import data from excel file.");
       error.originalError = err;
       throw error;
     }
