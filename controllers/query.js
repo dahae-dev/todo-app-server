@@ -1,5 +1,5 @@
 const VError = require("verror");
-const moment = require("moment");
+const moment = require("moment-timezone");
 const { Op } = require("sequelize");
 const db = require("../models");
 
@@ -63,7 +63,7 @@ module.exports = {
           case "today":
             whereClause = {
               where: {
-                due_date: moment().startOf("day").format("YYYY-MM-DD"),
+                due_date: moment().tz("Asia/Seoul").format("YYYY-MM-DD"),
               }
             };
             break;
