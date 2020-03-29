@@ -2,7 +2,7 @@
 
 ### Tech Stack
 
-- Node.js + Express Server
+- Node.js(v10.16.0) + Express Server
 - DB
   - AWS RDS (MySQL)
   - Sequelize
@@ -34,4 +34,4 @@ npm start
 npm run dev
 ```
 
-*** You need database configuration beforehand**
+**You need database configuration with .env file beforehand**
