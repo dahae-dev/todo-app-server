@@ -248,6 +248,10 @@ module.exports = {
           prop: "is_completed",
           type: Boolean,
         },
+        "Subtask": {
+          prop: "subtask",
+          type: String,
+        },
         "Due Date": {
           prop: "due_date",
           type: String,
@@ -268,9 +272,30 @@ module.exports = {
         row.title = !row.title ? "No title..." : row.title;
         row.created_at = row.created_date;
         row.updated_at = row.updated_date;
+        if (row.subtask) row.subtask = row.subtask.split("@").slice(1);
         return row;
-      })
+      });
       await db.Task.bulkCreate(data);
+      for (const task of data) {
+        const parent = await query.all({
+          where: {
+            title: task.title,
+          }
+        });
+        const parent_id = parent[0].id;
+        if (task.subtask && !!task.subtask.length) {
+          for (const title of task.subtask) {
+            const subtask = await query.all({
+              where: {
+                title,
+              }
+            });
+            await subtask[0].update({
+              parent_id,
+            });
+          }
+        }
+      }
       const tasks = await query.pagination(1);
       const totalCounts = await query.counts();
       const count = await db.Task.count();
