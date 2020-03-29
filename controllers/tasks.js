@@ -6,13 +6,16 @@ const query = require("./query");
 module.exports = {
   getAllTasks: async (req, res) => {
     try {
-      const tasks = await query.all();
+      const tasks = await query.all({
+        order: [["id", "ASC"]],
+      });
       const totalCounts = await query.counts();
       res.json({
         tasks,
         totalCounts,
       });
     } catch (err) {
+      console.log(err);
       const error = new VError("Failed to get all tasks.");
       error.originalError = err;
       throw error;
@@ -30,6 +33,7 @@ module.exports = {
         count,
       });
     } catch (err) {
+      console.log(err);
       const error = new VError("Failed to get tasks per page.");
       error.originalError = err;
       throw error;
@@ -46,6 +50,7 @@ module.exports = {
         count,
       });
     } catch (err) {
+      console.log(err);
       const error = new VError("Failed to search tasks.");
       error.originalError = err;
       throw error;
@@ -62,6 +67,7 @@ module.exports = {
         count,
       });
     } catch (err) {
+      console.log(err);
       const error = new VError("Failed to filter tasks.");
       error.originalError = err;
       throw error;
@@ -82,6 +88,7 @@ module.exports = {
         totalCounts,
       });
     } catch (err) {
+      console.log(err);
       const error = new VError("Failed to add a new task.");
       error.originalError = err;
       throw error;
@@ -90,15 +97,24 @@ module.exports = {
   addSubtask: async (req, res) => {
     try {
       const { title, parent_id, pageNum } = req.body;
-      await db.Task.create({
-        title,
-        parent_id,
-      });
-      const parentTask = await db.Task.findByPk(parent_id);
-      if (parentTask.is_completed) {
-        await parentTask.update({
-          is_completed: false,
-        })
+      const existingSubtask = await query.all({
+        where: {
+          title,
+        }
+      })
+      if (!!existingSubtask.length) {
+        const subtask = await existingSubtask[0].update({
+          parent_id,
+        });
+        if (!subtask.is_completed) {
+          await query.updateAncestors(subtask);
+        }
+      } else {
+        const subtask = await db.Task.create({
+          title,
+          parent_id,
+        });
+        await query.updateAncestors(subtask);
       }
       const tasks = await query.pagination(pageNum);
       const totalCounts = await query.counts();
@@ -109,6 +125,7 @@ module.exports = {
         count,
       });
     } catch (err) {
+      console.log(err);
       const error = new VError("Failed to add a subtask.");
       error.originalError = err;
       throw error;
@@ -116,15 +133,22 @@ module.exports = {
   },
   updateTask: async (req, res) => {
     try {
-      const { id, title } = req.body;
+      const { id, title, pageNum, page, queryString } = req.body;
       const task = await db.Task.findByPk(id);
       await task.update({
         title,
       });
+      const whereClause = await query.current(page, queryString);
+      const tasks = await query.pagination(pageNum, whereClause);
+      const totalCounts = await query.counts();
+      const count = await db.Task.count(whereClause);
       res.json({
-        task,
+        tasks,
+        totalCounts,
+        count,
       });
     } catch (err) {
+      console.log(err);
       const error = new VError("Failed to update task title.");
       error.originalError = err;
       throw error;
@@ -137,8 +161,15 @@ module.exports = {
       await task.update({
         is_completed,
       })
+      if (!is_completed) {
+        await query.updateAncestors(task);
+      }
       const whereClause = await query.current(page, queryString);
-      const tasks = await query.pagination(pageNum, whereClause);
+      let tasks = await query.pagination(pageNum, whereClause);
+      if (!tasks.length && pageNum > 1) {
+        pageNum = pageNum - 1;
+        tasks = await query.pagination(pageNum, whereClause);
+      }
       const totalCounts = await query.counts();
       const count = await db.Task.count(whereClause);
       res.json({
@@ -147,6 +178,7 @@ module.exports = {
         count,
       });
     } catch (err) {
+      console.log(err);
       const error = new VError("Failed to update the task complete.");
       error.originalError = err;
       throw error;
@@ -169,6 +201,7 @@ module.exports = {
         count,
       });
     } catch (err) {
+      console.log(err);
       const error = new VError("Failed to save the due date.");
       error.originalError = err;
       throw error;
@@ -182,10 +215,10 @@ module.exports = {
       const task = await db.Task.findByPk(id);
       await task.destroy();
       const whereClause = await query.current(page, queryString);
-      let tasks = await query.pagination(pageNum);
-      if (!tasks.length) {
+      let tasks = await query.pagination(pageNum, whereClause);
+      if (!tasks.length && pageNum > 1) {
         pageNum = pageNum - 1;
-        tasks = await query.pagination(pageNum - 1);
+        tasks = await query.pagination(pageNum, whereClause);
       }
       const totalCounts = await query.counts();
       const count = await db.Task.count(whereClause);
@@ -196,6 +229,7 @@ module.exports = {
         count,
       });
     } catch (err) {
+      console.log(err);
       const error = new VError("Failed to delete the task.");
       error.originalError = err;
       throw error;
@@ -232,6 +266,8 @@ module.exports = {
         const dateRegex = /([12]\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]))/;
         row.due_date = !dateRegex.test(row.due_date) ? null : row.due_date;
         row.title = !row.title ? "No title..." : row.title;
+        row.created_at = row.created_date;
+        row.updated_at = row.updated_date;
         return row;
       })
       await db.Task.bulkCreate(data);
@@ -244,6 +280,7 @@ module.exports = {
         count,
       });
     } catch (err) {
+      console.log(err);
       const error = new VError("Failed to import data from excel file.");
       error.originalError = err;
       throw error;

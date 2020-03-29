@@ -90,7 +90,7 @@ module.exports = {
     }
     return whereClause;
   },
-  pagination: async function (pageNum, extraClause) {
+  pagination: async function (pageNum, extraClause = {}) {
     const limit = 5;
     const offset = pageNum * limit - limit;
     const tasks = await this.all({
@@ -99,5 +99,22 @@ module.exports = {
       ...extraClause,
     })
     return tasks;
+  },
+  checkAllAncestors: async function (task) {
+    const ancestors = [];
+    if (!task.parent_id) {
+      return ancestors;
+    };
+    const parent = await db.Task.findByPk(task.parent_id);
+    ancestors.push(parent);
+    return ancestors.concat(await this.checkAllAncestors(parent));
+  },
+  updateAncestors: async function (task) {
+    const ancestors = await this.checkAllAncestors(task);
+    for (const ancestor of ancestors) {
+      await ancestor.update({
+        is_completed: false,
+      });
+    }
   },
 }
