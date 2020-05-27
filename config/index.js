@@ -9,8 +9,8 @@ const config = {
   database: process.env["DB_DATABASE"],
   host: process.env["DB_HOST"],
   dialect: "mysql",
-  charset: "utf8",
-  collate: "utf8_general_ci",
+  charset: "utf8mb4",
+  collate: "utf8mb4_general_ci",
   dialectOptions: {
     dateStrings: true,
     typeCast: true,
