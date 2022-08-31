@@ -13,7 +13,7 @@
     "express": "~4.17.1",
     "express-formidable": "^1.2.0",
     "http-errors": "~1.7.3",
-    "moment-timezone": "^0.5.28",
+    "moment-timezone": "^0.5.35",
     "morgan": "~1.9.1",
     "mysql2": "^2.1.0",
     "read-excel-file": "^4.0.6",
