@@ -16,7 +16,7 @@
     "moment-timezone": "^0.5.28",
     "morgan": "~1.9.1",
     "mysql2": "^2.1.0",
-    "read-excel-file": "^4.0.6",
+    "read-excel-file": "^5.5.0",
     "sequelize": "^5.21.5",
     "verror": "^1.10.0"
   }
